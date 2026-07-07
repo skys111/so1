@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>국기·나라·수도 매칭 퀴즈</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* 밝고 상큼한 톤: 하늘색·민트·흰색 */
+    :root {
+      --sky: #38bdf8;
+      --sky-light: #e0f2fe;
+      --mint: #2dd4bf;
+      --mint-light: #ccfbf1;
+      --bg: #f0fdfa;
+      --text: #1e3a4a;
+      --text-muted: #64748b;
+      --white: #ffffff;
+      --shadow: 0 8px 24px rgba(56, 189, 248, 0.12);
+    }
+
+    body {
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      background: var(--bg);
+      padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+      line-height: 1.6;
+      min-height: 100vh;
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    /* 심플 흰 카드 헤더 */
+    .header-card {
+      background: var(--white);
+      border-radius: 24px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .header-card .share-tip {
+      background: var(--sky-light);
+      color: #0369a1;
+      font-size: 0.875rem;
+      padding: 0.6rem 0.85rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .header-card h1 {
+      font-size: clamp(1.25rem, 4vw, 1.5rem);
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .header-card p {
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    /* 퀴즈 카드 — 부드럽게 둥근 모서리 */
+    .quiz-card {
+      background: var(--white);
+      border-radius: 24px;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .quiz-card.is-entering {
+      animation: cardEnter 0.4s ease-out;
+    }
+
+    @keyframes cardEnter {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 상단 진행·점수 */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.25rem 0.5rem 1rem;
+      border-bottom: 2px solid var(--sky-light);
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      font-weight: bold;
+    }
+
+    .status-bar .progress {
+      color: var(--sky);
+      background: var(--sky-light);
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+    }
+
+    .status-bar .score {
+      color: #0d9488;
+      background: var(--mint-light);
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+    }
+
+    /* 문제 영역 */
+    .question-area {
+      text-align: center;
+      padding: 0.5rem 0 1.25rem;
+    }
+
+    .question-area.is-entering {
+      animation: fadeIn 0.35s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .question-area .flag {
+      font-size: 4.5rem;
+      line-height: 1.1;
+    }
+
+    .question-area .country-hint {
+      margin-top: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    .question-area .question-text {
+      margin-top: 0.35rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* 4지선다 2×2 — 둥근 버튼 (터치 영역 48px 이상) */
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.875rem;
+    }
+
+    .choices button {
+      min-height: 56px;
+      padding: 0.875rem 0.625rem;
+      background: var(--sky-light);
+      border: 2px solid transparent;
+      border-radius: 18px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .choices button:hover {
+      background: #bae6fd;
+    }
+
+    .choices button:active {
+      background: var(--mint-light);
+      transform: scale(0.97);
+      box-shadow: 0 2px 8px rgba(45, 212, 191, 0.25);
+    }
+
+    .choices button:disabled {
+      cursor: default;
+      transform: none;
+    }
+
+    .choices button.correct {
+      background: #dcfce7;
+      border-color: #22c55e;
+      color: #166534;
+    }
+
+    .choices button.wrong {
+      background: #fee2e2;
+      border-color: #ef4444;
+      color: #991b1b;
+    }
+
+    /* 피드백 문구 */
+    .feedback {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+
+    .feedback.show {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .feedback.correct {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .feedback.wrong {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* 다음 문제 버튼 */
+    .next-btn {
+      display: none;
+      width: 100%;
+      margin-top: 1.125rem;
+      min-height: 52px;
+      padding: 0.875rem;
+      background: var(--sky);
+      color: var(--white);
+      border: none;
+      border-radius: 18px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      touch-action: manipulation;
+    }
+
+    .next-btn.show {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .next-btn:active {
+      transform: scale(0.98);
+      background: #0ea5e9;
+    }
+
+    /* 최종 점수 요약 */
+    .summary {
+      display: none;
+      text-align: center;
+      padding: 1rem 0.5rem;
+    }
+
+    .summary.show {
+      display: block;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .summary .summary-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .summary h2 {
+      font-size: 1.35rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .summary .final-score {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--sky);
+      margin: 0.75rem 0;
+    }
+
+    .summary .summary-message {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 1.25rem;
+      line-height: 1.6;
+    }
+
+    .summary-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .summary .restart-btn,
+    .summary .retry-wrong-btn {
+      width: 100%;
+      min-height: 52px;
+      padding: 0.875rem;
+      border: none;
+      border-radius: 18px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .summary .restart-btn {
+      background: var(--mint);
+      color: var(--white);
+    }
+
+    .summary .restart-btn:active {
+      transform: scale(0.98);
+      background: #14b8a6;
+    }
+
+    .summary .retry-wrong-btn {
+      background: var(--white);
+      color: var(--sky);
+      border: 2px solid var(--sky);
+    }
+
+    .summary .retry-wrong-btn:active {
+      transform: scale(0.98);
+      background: var(--sky-light);
+    }
+
+    .summary .retry-wrong-btn.hidden {
+      display: none;
+    }
+
+    .quiz-body.hidden {
+      display: none;
+    }
+
+    /* 태블릿 */
+    @media (min-width: 600px) {
+      .container {
+        max-width: 520px;
+      }
+
+      .header-card,
+      .quiz-card {
+        padding: 1.5rem 1.75rem;
+      }
+
+      .question-area .flag {
+        font-size: 5rem;
+      }
+
+      .choices {
+        gap: 1rem;
+      }
+
+      .choices button {
+        min-height: 60px;
+        font-size: 1.05rem;
+      }
+    }
+
+    /* 작은 모바일 */
+    @media (max-width: 360px) {
+      body {
+        padding: 0.75rem;
+      }
+
+      .header-card,
+      .quiz-card {
+        border-radius: 20px;
+        padding: 1rem;
+      }
+
+      .question-area .flag {
+        font-size: 3.75rem;
+      }
+
+      .choices {
+        gap: 0.75rem;
+      }
+
+      .choices button {
+        min-height: 56px;
+        font-size: 1rem;
+        border-radius: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 제목과 안내 -->
+    <header class="header-card">
+      <p class="share-tip">💡 학생에게 이 HTML 파일을 보내면, 더블 클릭으로 브라우저에서 바로 풀 수 있어요.</p>
+      <h1>국기·나라·수도 매칭 퀴즈</h1>
+      <p>국기, 나라 이름, 수도를 맞춰 보세요. 4개 보기 중 하나를 고르면 됩니다.</p>
+    </header>
+
+    <!-- 퀴즈 카드: 진행·국기·문제·보기 -->
+    <section class="quiz-card" aria-label="퀴즈">
+      <div class="status-bar" aria-label="진행 상황">
+        <span class="progress">문제 1/5</span>
+        <span class="score">점수 0</span>
+      </div>
+
+      <div class="quiz-body">
+        <div class="question-area"></div>
+        <div class="choices" aria-label="보기"></div>
+        <p class="feedback" role="status"></p>
+        <button type="button" class="next-btn">다음 문제</button>
+      </div>
+
+      <div class="summary" aria-label="최종 결과">
+        <div class="summary-icon">🎉</div>
+        <h2>퀴즈 완료!</h2>
+        <p class="final-score">0 / 5</p>
+        <p class="summary-message"></p>
+        <div class="summary-actions">
+          <button type="button" class="retry-wrong-btn hidden">틀린 문제 다시 풀기</button>
+          <button type="button" class="restart-btn">처음부터 다시 하기</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // 퀴즈 샘플 데이터 (5문제)
+    const quizData = [
+      {
+        flag: "🇰🇷",
+        countryHint: "한국",
+        correctAnswer: "서울",
+        wrongAnswers: ["부산", "도쿄", "베이징"]
+      },
+      {
+        flag: "🇯🇵",
+        countryHint: "일본",
+        correctAnswer: "도쿄",
+        wrongAnswers: ["오사카", "서울", "방콕"]
+      },
+      {
+        flag: "🇫🇷",
+        countryHint: "프랑스",
+        correctAnswer: "파리",
+        wrongAnswers: ["런던", "베를린", "마드리드"]
+      },
+      {
+        flag: "🇧🇷",
+        countryHint: "브라질",
+        correctAnswer: "브라질리아",
+        wrongAnswers: ["상파울루", "리우데자네이루", "부에노스아이레스"]
+      },
+      {
+        flag: "🇪🇬",
+        countryHint: "이집트",
+        correctAnswer: "카이로",
+        wrongAnswers: ["알렉산드리아", "안카라", "카트만두"]
+      }
+    ];
+
+    const questionArea = document.querySelector(".question-area");
+    const choicesArea = document.querySelector(".choices");
+    const progressEl = document.querySelector(".progress");
+    const scoreEl = document.querySelector(".score");
+    const quizCard = document.querySelector(".quiz-card");
+    const quizBody = document.querySelector(".quiz-body");
+    const feedbackEl = document.querySelector(".feedback");
+    const nextBtn = document.querySelector(".next-btn");
+    const summaryEl = document.querySelector(".summary");
+    const finalScoreEl = document.querySelector(".final-score");
+    const summaryMessageEl = document.querySelector(".summary-message");
+    const restartBtn = document.querySelector(".restart-btn");
+    const retryWrongBtn = document.querySelector(".retry-wrong-btn");
+
+    let currentIndex = 0;
+    let score = 0;
+    let answered = false;
+    let activeQuestions = quizData;
+    let wrongIndices = [];
+    let isRetryMode = false;
+
+    // 은은한 등장 애니메이션
+    function playEnterAnimation(element) {
+      element.classList.remove("is-entering");
+      void element.offsetWidth;
+      element.classList.add("is-entering");
+    }
+
+    // 보기 순서 섞기
+    function shuffle(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // 점수·진행 표시 갱신
+    function updateStatus() {
+      progressEl.textContent = "문제 " + (currentIndex + 1) + "/" + activeQuestions.length;
+      scoreEl.textContent = "점수 " + score;
+    }
+
+    // 피드백·다음 버튼 초기화
+    function resetFeedback() {
+      answered = false;
+      feedbackEl.className = "feedback";
+      feedbackEl.textContent = "";
+      nextBtn.classList.remove("show");
+    }
+
+    // 보기 클릭 처리
+    function handleAnswer(selected, correctAnswer) {
+      if (answered) return;
+      answered = true;
+
+      const buttons = choicesArea.querySelectorAll("button");
+      const isCorrect = selected === correctAnswer;
+
+      buttons.forEach(function (btn) {
+        btn.disabled = true;
+        if (btn.textContent === correctAnswer) {
+          btn.classList.add("correct");
+        } else if (btn.textContent === selected && !isCorrect) {
+          btn.classList.add("wrong");
+        }
+      });
+
+      if (isCorrect) {
+        score += 1;
+        feedbackEl.textContent = "정답입니다! 잘했어요.";
+        feedbackEl.className = "feedback show correct";
+      } else {
+        if (!isRetryMode && !wrongIndices.includes(currentIndex)) {
+          wrongIndices.push(currentIndex);
+        }
+        feedbackEl.textContent = "틀렸습니다. 정답은 " + correctAnswer + "입니다.";
+        feedbackEl.className = "feedback show wrong";
+      }
+
+      updateStatus();
+
+      if (currentIndex < activeQuestions.length - 1) {
+        nextBtn.textContent = "다음 문제";
+      } else {
+        nextBtn.textContent = "결과 보기";
+      }
+      nextBtn.classList.add("show");
+    }
+
+    // 문제 화면에 표시
+    function showQuestion(index) {
+      const question = activeQuestions[index];
+      resetFeedback();
+
+      questionArea.innerHTML =
+        '<div class="flag">' + question.flag + '</div>' +
+        '<p class="country-hint">' + question.countryHint + '</p>' +
+        '<p class="question-text">이 나라의 수도는?</p>';
+
+      const choices = shuffle([
+        question.correctAnswer,
+        ...question.wrongAnswers
+      ]);
+
+      choicesArea.innerHTML = choices.map(function (choice) {
+        return '<button type="button">' + choice + '</button>';
+      }).join("");
+
+      choicesArea.querySelectorAll("button").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          handleAnswer(btn.textContent, question.correctAnswer);
+        });
+      });
+
+      updateStatus();
+      playEnterAnimation(questionArea);
+    }
+
+    // 다음 문제 또는 결과 화면
+    function goNext() {
+      if (currentIndex < activeQuestions.length - 1) {
+        currentIndex += 1;
+        showQuestion(currentIndex);
+      } else {
+        showSummary();
+      }
+    }
+
+    // 최종 점수 요약
+    function showSummary() {
+      quizBody.classList.add("hidden");
+      summaryEl.classList.add("show");
+
+      finalScoreEl.textContent = score + " / " + activeQuestions.length;
+
+      if (score === activeQuestions.length) {
+        summaryMessageEl.textContent = isRetryMode
+          ? "틀린 문제를 모두 맞혔어요! 훌륭해요."
+          : "만점! 모든 수도를 맞혔어요.";
+      } else if (score >= Math.ceil(activeQuestions.length * 0.6)) {
+        summaryMessageEl.textContent = "잘했어요! 조금만 더 복습해 봐요.";
+      } else {
+        summaryMessageEl.textContent = "다시 도전해 보며 나라와 수도를 익혀 봐요.";
+      }
+
+      // 틀린 문제가 있을 때만 '틀린 문제 다시 풀기' 표시
+      if (!isRetryMode && wrongIndices.length > 0) {
+        retryWrongBtn.textContent = "틀린 문제 다시 풀기 (" + wrongIndices.length + "문제)";
+        retryWrongBtn.classList.remove("hidden");
+      } else {
+        retryWrongBtn.classList.add("hidden");
+      }
+
+      progressEl.textContent = "완료";
+    }
+
+    // 처음부터 다시
+    function restartQuiz() {
+      currentIndex = 0;
+      score = 0;
+      answered = false;
+      activeQuestions = quizData;
+      wrongIndices = [];
+      isRetryMode = false;
+      quizBody.classList.remove("hidden");
+      summaryEl.classList.remove("show");
+      retryWrongBtn.classList.add("hidden");
+      showQuestion(currentIndex);
+      playEnterAnimation(quizCard);
+    }
+
+    // 틀린 문제만 다시 풀기
+    function retryWrongQuestions() {
+      activeQuestions = wrongIndices.map(function (i) {
+        return quizData[i];
+      });
+      wrongIndices = [];
+      isRetryMode = true;
+      currentIndex = 0;
+      score = 0;
+      answered = false;
+      quizBody.classList.remove("hidden");
+      summaryEl.classList.remove("show");
+      showQuestion(currentIndex);
+      playEnterAnimation(quizCard);
+    }
+
+    nextBtn.addEventListener("click", goNext);
+    restartBtn.addEventListener("click", restartQuiz);
+    retryWrongBtn.addEventListener("click", retryWrongQuestions);
+
+    // 첫 문제 표시
+    playEnterAnimation(quizCard);
+    showQuestion(currentIndex);
+  </script>
+</body>
+</html>
